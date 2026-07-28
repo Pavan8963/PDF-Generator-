@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal A4 Question Paper Generator</title>
+    <!-- Word File Export Library -->
+    <script src="https://unpkg.com/html-docx-js/dist/html-docx.js"></script>
+    <style>
+        /* CSS Variables */
+        :root {
+            --bg-image: url('border_bg.jpg'); /* Default background border image */
+            --page-width: 210mm;
+            --page-height: 297mm;
+            --primary-blue: #1a44c2;
+            --question-red: #cb1212;
+            --answer-green: #228b22;
+            --text-dark: #111111;
+            --table-header-bg: #e0e7ff;
+            --table-border: #93c5fd;
+            --code-bg: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, 'Devanagari Sangam MN', 'Noto Sans Devanagari', sans-serif;
+            background-color: #3b3f45;
+            color: var(--text-dark);
+            line-height: 1.5;
+        }
+
+        /* Top Header Control Bar */
+        .no-print-header {
+            background-color: #0f172a;
+            color: white;
+            padding: 12px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .no-print-header h1 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .btn-word {
+            background-color: #0284c7;
+        }
+
+        .btn-word:hover {
+            background-color: #0369a1;
+        }
+
+        .btn-print {
+            background-color: #059669;
+        }
+
+        .btn-print:hover {
+            background-color: #047857;
+        }
+
+        .file-label {
+            background-color: #334155;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Pages Container */
+        #pages-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            gap: 25px;
+        }
+
+        /* A4 Page Layout */
+        .a4-page {
+            width: var(--page-width);
+            height: var(--page-height);
+            background-color: #ffffff;
+            background-image: var(--bg-image);
+            background-size: 100% 100%;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.4);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 22mm 18mm 20mm 18mm;
+        }
+
+        .page-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow: hidden;
+        }
+
+        /* Question Block Structure */
+        .qa-block {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+            page-break-inside: auto; /* Allow break inside large questions */
+        }
+
+        .question-header-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .q-number-circle {
+            min-width: 40px;
+            height: 40px;
+            border: 2px solid var(--primary-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14pt;
+            color: var(--question-red);
+            background-color: #ffffff;
+        }
+
+        .q-text-box {
+            border: 2px solid var(--primary-blue);
+            border-radius: 12px;
+            padding: 5px 12px;
+            background-color: #ffffff;
+            font-size: 13pt;
+            font-weight: 700;
+            color: var(--question-red);
+            line-height: 1.4;
+            max-width: 82%;
+        }
+
+        .q-decorative-line {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .q-decorative-line-inner {
+            height: 2px;
+            background-color: var(--question-red);
+            flex-grow: 1;
+            max-width: 60px;
+        }
+
+        .or-divider {
+            text-align: center;
+            font-size: 11pt;
+            font-weight: 700;
+            color: #333333;
+            margin: 2px 0;
+        }
+
+        /* Answer Section */
+        .answer-container {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+        }
+
+        .answer-label-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 13pt;
+            font-weight: 800;
+            color: #0d6b12;
+            margin-left: 4px;
+        }
+
+        .answer-label-tag {
+            border: 2px solid var(--answer-green);
+            padding: 1px 10px;
+            border-radius: 6px;
+            background-color: #ffffff;
+            white-space: nowrap;
+        }
+
+        .answer-prefix-text {
+            font-size: 12pt;
+            color: #111111;
+            font-weight: 700;
+            line-height: 1.4;
+        }
+
+        .answer-box {
+            border: 2px dashed var(--answer-green);
+            border-radius: 10px;
+            padding: 10px 14px;
+            background-color: rgba(255, 255, 255, 0.96);
+            font-size: 11.5pt;
+            color: #111111;
+            font-weight: 600;
+            line-height: 1.5;
+        }
+
+        /* Tables */
+        .diff-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 4px;
+            font-size: 11pt;
+            background: #ffffff;
+        }
+
+        .diff-table th, .diff-table td {
+            border: 1px solid var(--table-border);
+            padding: 6px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .diff-table th {
+            background-color: var(--table-header-bg);
+            color: var(--primary-blue);
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .diff-table td:first-child {
+            font-weight: 700;
+            color: #1e293b;
+            background-color: #f8fafc;
+            width: 15%;
+            text-align: center;
+        }
+
+        /* MCQ Grid */
+        .mcq-options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 14px;
+            margin-top: 4px;
+            font-size: 11pt;
+        }
+
+        .mcq-opt {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        /* Code Block */
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid #cbd5e1;
+            padding: 8px 12px;
+            font-family: 'Courier New', Courier, monospace;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            font-size: 10.5pt;
+            margin-top: 4px;
+        }
+
+        .answer-box ol, .answer-box ul {
+            padding-left: 20px;
+        }
+
+        .error-msg {
+            background-color: #fee2e2;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #fca5a5;
+            margin: 20px;
+            font-weight: bold;
+        }
+
+        /* Print Settings */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+
+            body { background: none; }
+            .no-print-header { display: none !important; }
+            #pages-container { padding: 0; gap: 0; }
+            .a4-page {
+                box-shadow: none;
+                page-break-after: always;
+                page-break-inside: avoid;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Control Bar -->
+    <div class="no-print-header">
+        <h1>A4 Exam Paper Generator</h1>
+        <div class="controls">
+            <!-- Feature 1: Choose JSON File -->
+            <label class="file-label" for="jsonFileInput">📂 Load JSON</label>
+            <input type="file" id="jsonFileInput" accept=".json">
+
+            <!-- Choose Border Image -->
+            <label class="file-label" for="bgFileInput">🖼️ Change Border</label>
+            <input type="file" id="bgFileInput" accept="image/*">
+
+            <!-- Feature 2: Export Word File -->
+            <button class="btn btn-word" onclick="exportToWord()">📝 Export Word</button>
+
+            <!-- Print / Save PDF -->
+            <button class="btn btn-print" onclick="window.print()">🖨️ Print / PDF</button>
+        </div>
+    </div>
+
+    <!-- Pages Container -->
+    <div id="pages-container"></div>
+
+    <script>
+        let qaData = [];
+        let customBgImage = "";
+
+        function createPageElement() {
+            const page = document.createElement('div');
+            page.className = 'a4-page';
+            if (customBgImage) {
+                page.style.backgroundImage = `url('${customBgImage}')`;
+            }
+            page.innerHTML = `<div class="page-content"></div>`;
+            return page;
+        }
+
+        function renderAnswerContent(item) {
+            const type = item.type || 'plain_text';
+
+            if (type === 'table' || type === 'difference') {
+                const headers = item.table_headers || ['क्रमांक', 'भाग A', 'भाग B'];
+                const rows = item.table_data || [];
+                let html = `<table class="diff-table"><thead><tr>`;
+                headers.forEach(h => html += `<th>${h}</th>`);
+                html += `</tr></thead><tbody>`;
+                rows.forEach(r => {
+                    html += `<tr>`;
+                    r.forEach(c => html += `<td>${c}</td>`);
+                    html += `</tr>`;
+                });
+                return html + `</tbody></table>`;
+            }
+
+            if (type === 'mcq' || type === 'checkbox') {
+                const options = item.options || [];
+                let html = `<div class="mcq-options-grid">`;
+                options.forEach(opt => html += `<div class="mcq-opt">${opt}</div>`);
+                html += `</div>`;
+                if (item.correct_answer) {
+                    html += `<div style="margin-top:6px; color:#15803d; font-weight:700;">✓ सही उत्तर: ${item.correct_answer}</div>`;
+                }
+                return html;
+            }
+
+            if (type === 'code') {
+                let html = item.code_snippet ? `<pre class="code-block">${item.code_snippet}</pre>` : '';
+                html += `<div style="margin-top:4px;"><b>Output/Answer:</b> ${item.answer || ''}</div>`;
+                return html;
+            }
+
+            if (type === 'process' || type === 'steps') {
+                const steps = item.steps || [];
+                let html = `<ol>`;
+                steps.forEach(s => html += `<li>${s}</li>`);
+                return html + `</ol>`;
+            }
+
+            if (item.answer_points && Array.isArray(item.answer_points) && item.answer_points.length > 0) {
+                let html = `<ol>`;
+                item.answer_points.forEach(pt => html += `<li>${pt}</li>`);
+                return html + `</ol>`;
+            }
+
+            return `<p style="white-space: pre-line;">${item.answer || item.a || ''}</p>`;
+        }
+
+        function createQANode(item, index, isContinued = false) {
+            const block = document.createElement('div');
+            block.className = 'qa-block';
+
+            const qNo = item.number || (index + 1);
+            const questionMain = item.question || item.q || '';
+            const questionOr = item.or_question || item.or_q || null;
+            const answerPrefix = item.answer_prefix || '';
+
+            let html = '';
+
+            // Agar agle page par continute ho raha hai toh top heading add karein
+            if (isContinued) {
+                html += `
+                    <div style="font-size:10pt; font-weight:bold; color:#2563eb; font-style:italic;">
+                        [प्रश्न ${qNo} का शेष उत्तर (Continued from previous page)]
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="question-header-row">
+                        <div class="q-number-circle">${qNo}.</div>
+                        <div class="q-text-box">प्रश्न ${qNo}. ${questionMain}</div>
+                        <div class="q-decorative-line"><div class="q-decorative-line-inner"></div></div>
+                    </div>
+                `;
+
+                if (questionOr) {
+                    html += `
+                        <div class="or-divider">अथवा</div>
+                        <div class="question-header-row" style="justify-content: center;">
+                            <div class="q-text-box" style="max-width: 90%; color: #cb1212;">${questionOr}</div>
+                        </div>
+                    `;
+                }
+            }
+
+            html += `
+                <div class="answer-container">
+                    ${!isContinued ? `
+                    <div class="answer-label-row">
+                        <span class="answer-label-tag">उत्तर</span>
+                        <span>➔</span>
+                        ${answerPrefix ? `<span class="answer-prefix-text">${answerPrefix}</span>` : ''}
+                    </div>` : ''}
+                    <div class="answer-box">
+                        ${renderAnswerContent(item)}
+                    </div>
+                </div>
+            `;
+
+            block.innerHTML = html;
+            return block;
+        }
+
+        // Feature 3: Smart Multi-page Overflow & Split Handling
+        function renderPages() {
+            const container = document.getElementById('pages-container');
+            container.innerHTML = '';
+
+            if (!qaData || qaData.length === 0) {
+                container.innerHTML = `<div class="error-msg">कोई डेटा नहीं मिला! 'Load JSON' बटन दबाकर JSON फ़ाइल चुनें।</div>`;
+                return;
+            }
+
+            let currentPage = createPageElement();
+            container.appendChild(currentPage);
+            let currentContent = currentPage.querySelector('.page-content');
+
+            qaData.forEach((item, idx) => {
+                let qaNode = createQANode(item, idx);
+                currentContent.appendChild(qaNode);
+
+                // Check if element causes A4 page overflow
+                if (currentContent.scrollHeight > currentContent.clientHeight) {
+                    currentContent.removeChild(qaNode);
+
+                    // Open a new page
+                    currentPage = createPageElement();
+                    container.appendChild(currentPage);
+                    currentContent = currentPage.querySelector('.page-content');
+
+                    // Check if a single question is larger than entire page height
+                    qaNode = createQANode(item, idx);
+                    currentContent.appendChild(qaNode);
+
+                    // If still larger, split logically
+                    if (currentContent.scrollHeight > currentContent.clientHeight) {
+                        currentContent.removeChild(qaNode);
+                        
+                        // Push full block to new page with continuation marker
+                        let continuedNode = createQANode(item, idx, true);
+                        currentContent.appendChild(continuedNode);
+                    }
+                }
+            });
+        }
+
+        // Feature 1: JSON File Loader Event
+        document.getElementById('jsonFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    qaData = JSON.parse(evt.target.result);
+                    renderPages();
+                } catch (err) {
+                    alert("JSON फ़ाइल का फ़ॉर्मेट सही नहीं है!");
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Background Border Image Loader
+        document.getElementById('bgFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                customBgImage = evt.target.result;
+                renderPages();
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Default Load attempt from data.json file in local folder
+        async function loadDefaultDataJSON() {
+            try {
+                const response = await fetch('data.json');
+                if (response.ok) {
+                    qaData = await response.json();
+                    renderPages();
+                }
+            } catch (err) {
+                // Ignore if default file is not found
+            }
+        }
+
+        // Feature 2: Export to MS Word File (.docx)
+        function exportToWord() {
+            const container = document.getElementById('pages-container');
+            if (!container || container.children.length === 0) {
+                alert("Export करने के लिए कोई कंटेंट उपलब्ध नहीं है!");
+                return;
+            }
+
+            const contentHtml = container.innerHTML;
+            const fullDocument = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Question Paper</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; }
+                        .a4-page { margin-bottom: 30px; border: 1px solid #ccc; padding: 20px; }
+                        .q-number-circle { font-weight: bold; font-size: 14pt; color: #cb1212; }
+                        .q-text-box { font-weight: bold; font-size: 13pt; color: #cb1212; }
+                        .answer-label-tag { font-weight: bold; color: #0d6b12; }
+                        .diff-table { border-collapse: collapse; width: 100%; }
+                        .diff-table th, .diff-table td { border: 1px solid #000; padding: 5px; }
+                    </style>
+                </head>
+                <body>
+                    ${contentHtml}
+                </body>
+                </html>
+            `;
+
+            if (window.htmlDocx) {
+                const converted = htmlDocx.asBlob(fullDocument);
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(converted);
+                a.download = 'Question_Paper.docx';
+                a.click();
+            } else {
+                alert("Word Export Library load नहीं हो सकी। इंटरनेट कनेक्शन चेक करें।");
+            }
+        }
+
+        window.onload = loadDefaultDataJSON;
+    </script>
+</body>
+</html>
